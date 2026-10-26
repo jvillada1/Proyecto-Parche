@@ -11,6 +11,9 @@ export default defineConfig([
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
   {
     files: ['apps/api/**/*.ts', 'packages/**/*.ts'],
@@ -21,6 +24,5 @@ export default defineConfig([
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },
   },
-  // Siempre al final: desactiva reglas que chocan con Prettier
   prettier,
 ])

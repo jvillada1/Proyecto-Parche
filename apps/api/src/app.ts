@@ -3,11 +3,16 @@ import cors from 'cors'
 import helmet from 'helmet'
 import cookieParser from 'cookie-parser'
 import mongoose from 'mongoose'
+import './config/zod'
 import { env } from './config/env'
+import { authRoutes } from './modules/auth/auth.routes'
+import { httpLogger } from './middlewares/http-logger'
+import { errorHandler, notFoundHandler } from './middlewares/error-handler'
 
 export function createApp() {
   const app = express()
   app.set('trust proxy', 1)
+  app.use(httpLogger)
   app.use(helmet())
   app.use(cors({ origin: env.CORS_ORIGIN.split(','), credentials: true }))
   app.use(express.json({ limit: '1mb' }))
@@ -18,8 +23,10 @@ export function createApp() {
     res.status(dbOk ? 200 : 503).json({ data: { status: dbOk ? 'ok' : 'degraded', db: dbOk } })
   })
 
-  // Aquí irán las rutas de cada módulo, por ejemplo:
-  // app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/auth', authRoutes)
+
+  app.use(notFoundHandler)
+  app.use(errorHandler)
 
   return app
 }

@@ -6,6 +6,8 @@
     "dev": "pnpm --parallel --filter api --filter web dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter api test",
+    "test:integration": "pnpm --filter api test:integration",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

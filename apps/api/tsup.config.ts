@@ -5,5 +5,5 @@ export default defineConfig({
   format: ['esm'],
   target: 'node22',
   clean: true,
-  noExternal: ['@parche/shared'], // mete el paquete compartido dentro del build
+  noExternal: ['@parche/shared'],
 })

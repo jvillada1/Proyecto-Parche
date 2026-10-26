@@ -9,7 +9,9 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "db:init": "tsx --env-file=.env src/scripts/db-init.ts",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
