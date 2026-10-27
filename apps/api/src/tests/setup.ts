@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 import { afterAll } from 'vitest'
+import '../config/mongoose'
 
 const mongoServer = await MongoMemoryServer.create()
 

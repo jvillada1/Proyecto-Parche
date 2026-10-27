@@ -58,6 +58,24 @@ export const refresh: RequestHandler = async (req, res) => {
   }
 }
 
+export const me: RequestHandler = async (req, res) => {
+  if (!req.auth) throw new UnauthorizedError()
+
+  res.json({ data: await authService.getMe(req.auth.userId) })
+}
+
+export const changePassword: RequestHandler = async (req, res) => {
+  if (!req.auth) throw new UnauthorizedError()
+
+  const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME]
+  await authService.changePassword(
+    req.auth.userId,
+    req.body,
+    typeof refreshToken === 'string' && refreshToken ? refreshToken : undefined,
+  )
+  res.json({ data: { message: 'Contraseña actualizada correctamente' } })
+}
+
 export const logout: RequestHandler = async (req, res) => {
   const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME]
   if (typeof refreshToken === 'string' && refreshToken) await authService.logout(refreshToken)

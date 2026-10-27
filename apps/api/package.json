@@ -7,8 +7,10 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsup",
     "start": "node dist/server.js",
+    "admin:create:prod": "node dist/scripts/create-admin.js",
     "typecheck": "tsc --noEmit",
     "db:init": "tsx --env-file=.env src/scripts/db-init.ts",
+    "admin:create": "tsx --env-file=.env src/scripts/create-admin.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts"

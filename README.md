@@ -35,3 +35,20 @@ pnpm dev                                 # api + web en paralelo
 | `pnpm lint` / `pnpm lint:fix`  | Ejecuta ESLint (con/sin arreglo) |
 | `pnpm format` / `format:check` | Formatea / verifica con Prettier |
 | `pnpm db:up` / `pnpm db:down`  | Levanta / detiene MongoDB        |
+
+## Cuenta de administrador
+
+Las cuentas `admin` no se pueden crear desde la API; se crean por consola con acceso a la base de datos:
+
+```bash
+pnpm --filter api admin:create          # pide nombre, correo y contraseña (oculta)
+```
+
+Para despliegues o CI, sin interacción (tras `pnpm build`):
+
+```bash
+ADMIN_NAME="…" ADMIN_EMAIL="…" ADMIN_PASSWORD="…" pnpm --filter api admin:create:prod
+```
+
+La contraseña de administrador exige 12+ caracteres con mayúscula, minúscula, número y símbolo. El
+script falla si el correo ya existe: no promueve cuentas existentes a `admin`.

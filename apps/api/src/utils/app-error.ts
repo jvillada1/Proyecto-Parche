@@ -45,3 +45,15 @@ export class TooManyRequestsError extends AppError {
     super(429, 'RATE_LIMITED', message)
   }
 }
+
+export class OutOfServiceAreaError extends AppError {
+  constructor(message = 'La ubicación está fuera del área de servicio') {
+    super(422, 'OUT_OF_SERVICE_AREA', message)
+  }
+}
+
+export class LimitReachedError extends AppError {
+  constructor(message: string) {
+    super(409, 'LIMIT_REACHED', message)
+  }
+}

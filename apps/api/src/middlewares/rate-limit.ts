@@ -43,3 +43,11 @@ export const loginRateLimiter = createRateLimiter({
   countOnlyFailures: true,
   keyParts: (req) => [String(req.body?.email ?? '')],
 })
+
+export const changePasswordRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  message: 'Demasiados intentos de cambio de contraseña, intenta de nuevo en 15 minutos',
+  countOnlyFailures: true,
+  keyParts: (req) => [req.auth?.userId ?? ''],
+})

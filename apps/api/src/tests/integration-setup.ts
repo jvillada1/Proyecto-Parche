@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import mongoose from 'mongoose'
 import { afterAll } from 'vitest'
+import '../config/mongoose'
 
 const mongoBaseUri = process.env.INTEGRATION_MONGODB_URI ?? 'mongodb://localhost:27017'
 const databaseName = `parche_integration_${randomBytes(4).toString('hex')}`

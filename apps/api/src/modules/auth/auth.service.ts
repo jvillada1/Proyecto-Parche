@@ -1,11 +1,22 @@
 import bcrypt from 'bcrypt'
+import mongoose from 'mongoose'
 import { User } from '../users/user.model'
 import { RefreshToken } from './refresh-token.model'
 import { Business } from '../businesses/business.model'
 import type { UserRole } from '@parche/shared'
-import { ConflictError, ForbiddenError, UnauthorizedError } from '../../utils/app-error'
+import {
+  ConflictError,
+  ForbiddenError,
+  UnauthorizedError,
+  ValidationError,
+} from '../../utils/app-error'
 import { createRefreshToken, hashToken, signAccessToken } from '../../lib/tokens'
-import type { LoginInput, RegisterManagerInput } from './auth.schemas'
+import type {
+  ChangePasswordInput,
+  CreateAdminInput,
+  LoginInput,
+  RegisterManagerInput,
+} from './auth.schemas'
 
 const BCRYPT_ROUNDS = 12
 const EMAIL_TAKEN_MESSAGE = 'Ya existe una cuenta con ese correo'
@@ -53,6 +64,22 @@ export async function registerManager(input: RegisterManagerInput, userAgent?: s
   const refreshToken = await createRefreshToken(user._id, userAgent)
 
   return { user, business, accessToken, refreshToken }
+}
+
+export async function createAdmin(input: CreateAdminInput) {
+  if (await User.exists({ email: input.email })) throw new ConflictError(EMAIL_TAKEN_MESSAGE)
+
+  try {
+    return await User.create({
+      name: input.name,
+      email: input.email,
+      passwordHash: await bcrypt.hash(input.password, BCRYPT_ROUNDS),
+      role: 'admin',
+    })
+  } catch (error) {
+    if (isDuplicateKeyError(error)) throw new ConflictError(EMAIL_TAKEN_MESSAGE)
+    throw error
+  }
 }
 
 export async function login(input: LoginInput, userAgent?: string) {
@@ -112,6 +139,54 @@ export async function refreshSession(refreshToken: string, userAgent?: string) {
   const accessToken = signAccessToken(user._id, user.role as UserRole)
 
   return { accessToken, refreshToken: newRefreshToken }
+}
+
+export async function getMe(userId: string) {
+  const user = await User.findById(userId)
+  if (!user) throw new UnauthorizedError(INVALID_SESSION_MESSAGE)
+  if (user.status === 'suspended') throw new ForbiddenError('Tu cuenta está suspendida')
+
+  if (user.role !== 'manager') return { user }
+
+  const business = await Business.findOne({ owner: user._id })
+  return { user, business }
+}
+
+export async function changePassword(
+  userId: string,
+  input: ChangePasswordInput,
+  currentRefreshToken?: string,
+) {
+  const user = await User.findById(userId).select('+passwordHash')
+  if (!user) throw new UnauthorizedError(INVALID_SESSION_MESSAGE)
+  if (user.status === 'suspended') throw new ForbiddenError('Tu cuenta está suspendida')
+
+  if (!(await bcrypt.compare(input.currentPassword, user.passwordHash))) {
+    throw new ValidationError('Datos inválidos', [
+      { path: 'body.currentPassword', message: 'La contraseña actual es incorrecta' },
+    ])
+  }
+
+  user.passwordHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS)
+  user.passwordChangedAt = new Date()
+  await user.save()
+
+  const currentSession = currentRefreshToken
+    ? await RefreshToken.findOne({
+        tokenHash: hashToken(currentRefreshToken),
+        user: user._id,
+        revokedAt: null,
+      })
+    : null
+
+  await RefreshToken.updateMany(
+    {
+      user: user._id,
+      revokedAt: null,
+      ...(currentSession && { family: mongoose.trusted({ $ne: currentSession.family }) }),
+    },
+    { revokedAt: new Date() },
+  )
 }
 
 export async function logout(refreshToken: string) {

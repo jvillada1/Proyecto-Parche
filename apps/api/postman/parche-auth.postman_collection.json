@@ -1,0 +1,266 @@
+{
+  "info": {
+    "name": "Parche - Auth (/auth/me, requireAuth, requireRole)",
+    "description": "Ejecutar en orden con el Collection Runner (o una por una de arriba hacia abajo). Requiere la API corriendo en {{baseUrl}} (pnpm db:up && pnpm dev).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000/api/v1" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "clave1234" },
+    { "key": "accessToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Registrar gestor (guarda accessToken)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": ["pm.collectionVariables.set('email', `gestor.${Date.now()}@parche.test`)"]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201))",
+              "const body = pm.response.json().data",
+              "pm.test('devuelve accessToken, user y business', () => {",
+              "  pm.expect(body.accessToken).to.be.a('string')",
+              "  pm.expect(body.user.role).to.eql('manager')",
+              "  pm.expect(body.business.name).to.eql('Café Parche')",
+              "})",
+              "pm.collectionVariables.set('accessToken', body.accessToken)"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ana Pérez\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"business\": { \"name\": \"Café Parche\", \"type\": \"cafe\" }\n}"
+        },
+        "url": "{{baseUrl}}/auth/register/manager"
+      }
+    },
+    {
+      "name": "02 - GET /me como gestor → 200 con negocio",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200))",
+              "const body = pm.response.json().data",
+              "pm.test('devuelve el usuario sin passwordHash', () => {",
+              "  pm.expect(body.user.email).to.eql(pm.collectionVariables.get('email'))",
+              "  pm.expect(body.user.role).to.eql('manager')",
+              "  pm.expect(body.user).to.not.have.property('passwordHash')",
+              "})",
+              "pm.test('incluye el negocio del gestor', () => {",
+              "  pm.expect(body.business).to.be.an('object')",
+              "  pm.expect(body.business.owner).to.eql(body.user.id)",
+              "})"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "03 - GET /me sin token → 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('401 Unauthorized', () => pm.response.to.have.status(401))",
+              "pm.test('código UNAUTHORIZED', () => pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'))"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "04 - GET /me con esquema Basic → 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401))"]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Basic YW5hOmNsYXZlMTIzNA==" }],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "05 - GET /me con token mal formado → 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401))"]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer no-es-un-jwt" }],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "06 - GET /me con rol cambiado a admin sin re-firmar → 401",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Simula un ataque: se edita el payload del JWT (role → admin) sin conocer el secreto.",
+              "const toB64 = (s) => s.replace(/-/g, '+').replace(/_/g, '/')",
+              "const toB64Url = (s) => s.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '')",
+              "const [header, payload, signature] = pm.collectionVariables.get('accessToken').split('.')",
+              "const claims = JSON.parse(CryptoJS.enc.Base64.parse(toB64(payload)).toString(CryptoJS.enc.Utf8))",
+              "claims.role = 'admin'",
+              "const forged = toB64Url(CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(JSON.stringify(claims))))",
+              "pm.variables.set('forgedToken', [header, forged, signature].join('.'))"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('401 Unauthorized (firma no coincide)', () => pm.response.to.have.status(401))"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{forgedToken}}" }],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "07 - Login gestor (guarda accessToken)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200))",
+              "pm.collectionVariables.set('accessToken', pm.response.json().data.accessToken)"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "08 - Refresh (cookie) → nuevo accessToken",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200))",
+              "pm.collectionVariables.set('accessToken', pm.response.json().data.accessToken)"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/auth/refresh"
+      }
+    },
+    {
+      "name": "09 - GET /me con el token renovado → 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200))",
+              "pm.test('sigue siendo el mismo gestor', () => pm.expect(pm.response.json().data.user.email).to.eql(pm.collectionVariables.get('email')))"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/auth/me"
+      }
+    },
+    {
+      "name": "10 - Logout → 204",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204))"]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/auth/logout"
+      }
+    },
+    {
+      "name": "11 - Refresh tras logout → 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401))"]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/auth/refresh"
+      }
+    }
+  ]
+}

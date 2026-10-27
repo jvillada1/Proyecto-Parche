@@ -32,6 +32,11 @@ export type BusinessType = (typeof BUSINESS_TYPES)[number]
 export const VERIFICATION_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number]
 
+// Por ahora solo Medellín; para ampliar al Valle de Aburrá se agregan aquí
+// (bello, itagui, envigado, sabaneta, ...).
+export const MUNICIPALITIES = ['medellin'] as const
+export type Municipality = (typeof MUNICIPALITIES)[number]
+
 export const COMUNAS = {
   '01': 'Popular',
   '02': 'Santa Cruz',

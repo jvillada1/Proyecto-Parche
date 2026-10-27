@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import { nanoid } from 'nanoid'
 import type { Types } from 'mongoose'
-import type { UserRole } from '@parche/shared'
+import { USER_ROLES, type UserRole } from '@parche/shared'
 import { env } from '../config/env'
 import { RefreshToken } from '../modules/auth/refresh-token.model'
 
@@ -14,6 +14,22 @@ export function signAccessToken(userId: Types.ObjectId, role: UserRole) {
     subject: String(userId),
     expiresIn: ACCESS_TOKEN_EXPIRES_IN,
   })
+}
+
+export interface AccessTokenPayload {
+  userId: string
+  role: UserRole
+}
+
+export function verifyAccessToken(token: string): AccessTokenPayload | null {
+  try {
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ['HS256'] })
+    if (typeof payload === 'string' || typeof payload.sub !== 'string') return null
+    if (!USER_ROLES.includes(payload.role)) return null
+    return { userId: payload.sub, role: payload.role }
+  } catch {
+    return null
+  }
 }
 
 export function hashToken(token: string) {
