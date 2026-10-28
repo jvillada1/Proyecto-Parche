@@ -1,0 +1,956 @@
+{
+  "info": {
+    "name": "Parche - Lugares (desactivar) y geocodificación",
+    "description": "Ejecutar en orden con el Collection Runner. Requiere la API en {{baseUrl}} (pnpm db:up && pnpm dev) y conexión a internet para las peticiones marcadas como Nominatim real. Cada ejecución registra 2 gestores nuevos: el límite de registro es 10 por hora por IP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "password",
+      "value": "clave1234"
+    },
+    {
+      "key": "emailA",
+      "value": ""
+    },
+    {
+      "key": "emailB",
+      "value": ""
+    },
+    {
+      "key": "tokenA",
+      "value": ""
+    },
+    {
+      "key": "tokenB",
+      "value": ""
+    },
+    {
+      "key": "venueId",
+      "value": ""
+    },
+    {
+      "key": "venueId2",
+      "value": ""
+    },
+    {
+      "key": "venueIdB",
+      "value": ""
+    },
+    {
+      "key": "searchResults",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Preparación",
+      "item": [
+        {
+          "name": "01 - Registrar gestor A (guarda tokenA)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["pm.collectionVariables.set('emailA', `emailA.${Date.now()}@parche.test`)"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201))",
+                  "pm.collectionVariables.set('tokenA', pm.response.json().data.accessToken)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register/manager",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Pérez\",\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{password}}\",\n  \"business\": {\n    \"name\": \"Café Parche A\",\n    \"type\": \"cafe\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "02 - Registrar gestor B (guarda tokenB)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["pm.collectionVariables.set('emailB', `emailB.${Date.now()}@parche.test`)"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201))",
+                  "pm.collectionVariables.set('tokenB', pm.response.json().data.accessToken)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register/manager",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana Pérez\",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{password}}\",\n  \"business\": {\n    \"name\": \"Café Parche B\",\n    \"type\": \"cafe\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "03 - Gestor A crea Sede Laureles (guarda venueId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201))",
+                  "const venue = pm.response.json().data.venue",
+                  "pm.test('nace activo', () => pm.expect(venue.isActive).to.eql(true))",
+                  "pm.collectionVariables.set('venueId', venue.id)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sede Laureles\",\n  \"address\": \"Cra. 70 #44-35\",\n  \"neighborhood\": \"Laureles\",\n  \"comuna\": \"11\",\n  \"location\": {\n    \"lat\": 6.2447,\n    \"lng\": -75.5906\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "04 - Gestor A crea Sede Provenza (guarda venueId2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201))",
+                  "const venue = pm.response.json().data.venue",
+                  "pm.test('nace activo', () => pm.expect(venue.isActive).to.eql(true))",
+                  "pm.collectionVariables.set('venueId2', venue.id)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sede Provenza\",\n  \"address\": \"Cra. 35 #8A-12\",\n  \"neighborhood\": \"Provenza\",\n  \"comuna\": \"14\",\n  \"location\": {\n    \"lat\": 6.2087,\n    \"lng\": -75.5664\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "05 - Gestor B crea su sede (guarda venueIdB)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201))",
+                  "const venue = pm.response.json().data.venue",
+                  "pm.test('nace activo', () => pm.expect(venue.isActive).to.eql(true))",
+                  "pm.collectionVariables.set('venueIdB', venue.id)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sede de B\",\n  \"address\": \"Cra. 70 #44-35\",\n  \"neighborhood\": \"Laureles\",\n  \"comuna\": \"11\",\n  \"location\": {\n    \"lat\": 6.2447,\n    \"lng\": -75.5906\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /me/venues/:id/deactivate",
+      "item": [
+        {
+          "name": "06 - Desactivar Sede Laureles → 200 isActive false",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const venue = pm.response.json().data.venue",
+                  "pm.test('isActive = false', () => pm.expect(venue.isActive).to.eql(false))",
+                  "pm.test('es el lugar pedido', () => pm.expect(venue.id).to.eql(pm.collectionVariables.get('venueId')))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/{{venueId}}/deactivate"
+          }
+        },
+        {
+          "name": "07 - Desactivar otra vez (idempotente) → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "pm.test('sigue inactivo', () => pm.expect(pm.response.json().data.venue.isActive).to.eql(false))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/{{venueId}}/deactivate"
+          }
+        },
+        {
+          "name": "08 - GET detalle confirma que quedó inactivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "pm.test('isActive = false persistido', () => pm.expect(pm.response.json().data.venue.isActive).to.eql(false))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/{{venueId}}"
+          }
+        },
+        {
+          "name": "09 - GET ?active=true (lugares para crear eventos) no ofrece el inactivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const ids = pm.response.json().data.venues.map((venue) => venue.id)",
+                  "pm.test('no incluye la sede desactivada', () => pm.expect(ids).to.not.include(pm.collectionVariables.get('venueId')))",
+                  "pm.test('incluye la sede activa', () => pm.expect(ids).to.include(pm.collectionVariables.get('venueId2')))",
+                  "pm.test('todos activos', () => pm.response.json().data.venues.forEach((venue) => pm.expect(venue.isActive).to.eql(true)))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues?active=true"
+          }
+        },
+        {
+          "name": "10 - GET ?active=false → solo inactivos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const venues = pm.response.json().data.venues",
+                  "pm.test('solo la sede desactivada', () => pm.expect(venues.map((venue) => venue.id)).to.eql([pm.collectionVariables.get('venueId')]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues?active=false"
+          }
+        },
+        {
+          "name": "11 - GET sin filtro → todos, activos primero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const ids = pm.response.json().data.venues.map((venue) => venue.id)",
+                  "pm.test('activos primero', () => pm.expect(ids).to.eql([pm.collectionVariables.get('venueId2'), pm.collectionVariables.get('venueId')]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues"
+          }
+        },
+        {
+          "name": "12 - GET ?active=si → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400))",
+                  "pm.test('código VALIDATION_ERROR', () => pm.expect(pm.response.json().error.code).to.eql('VALIDATION_ERROR'))",
+                  "const paths = pm.response.json().error.details.map((detail) => detail.path)",
+                  "pm.test('marca los campos query.active', () => pm.expect(paths).to.include.members([\"query.active\"]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues?active=si"
+          }
+        },
+        {
+          "name": "13 - Gestor A desactiva la sede de B → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404))",
+                  "pm.test('mensaje genérico', () => pm.expect(pm.response.json().error).to.eql({ code: 'NOT_FOUND', message: 'Lugar no encontrado' }))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/{{venueIdB}}/deactivate"
+          }
+        },
+        {
+          "name": "14 - La sede de B sigue activa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "pm.test('isActive = true', () => pm.expect(pm.response.json().data.venue.isActive).to.eql(true))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenB}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/{{venueIdB}}"
+          }
+        },
+        {
+          "name": "15 - Desactivar id inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404))",
+                  "pm.test('código NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/000000000000000000000000/deactivate"
+          }
+        },
+        {
+          "name": "16 - Desactivar id mal formado → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404))",
+                  "pm.test('código NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND'))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/no-es-un-id/deactivate"
+          }
+        },
+        {
+          "name": "17 - Desactivar sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401))",
+                  "pm.test('código UNAUTHORIZED', () => pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/me/venues/{{venueId}}/deactivate"
+          }
+        },
+        {
+          "name": "18 - Reactivar con PATCH isActive true → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "pm.test('vuelve a estar activo', () => pm.expect(pm.response.json().data.venue.isActive).to.eql(true))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/me/venues/{{venueId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Geocodificación",
+      "item": [
+        {
+          "name": "19 - search sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401))",
+                  "pm.test('código UNAUTHORIZED', () => pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED'))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/geocoding/search?q=Laureles"
+          }
+        },
+        {
+          "name": "20 - search sin q → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400))",
+                  "const paths = pm.response.json().error.details.map((detail) => detail.path)",
+                  "pm.test('marca los campos query.q', () => pm.expect(paths).to.include.members([\"query.q\"]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/search"
+          }
+        },
+        {
+          "name": "21 - search con menos de 3 caracteres → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400))",
+                  "const paths = pm.response.json().error.details.map((detail) => detail.path)",
+                  "pm.test('marca los campos query.q', () => pm.expect(paths).to.include.members([\"query.q\"]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/search?q=ab"
+          }
+        },
+        {
+          "name": "22 - search dirección en Medellín → 200 sugerencias (Nominatim real)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const inArea = (p) => p.lat >= 6.05 && p.lat <= 6.5 && p.lng >= -75.75 && p.lng <= -75.3",
+                  "const results = pm.response.json().data.results",
+                  "pm.test('máximo 5 sugerencias', () => pm.expect(results.length).to.be.within(0, 5))",
+                  "pm.test('todas dentro del área de servicio', () => results.forEach((place) => pm.expect(inArea(place), place.displayName).to.eql(true)))",
+                  "pm.test('cada sugerencia trae displayName, lat, lng, neighborhood y city', () => results.forEach((place) => {",
+                  "  pm.expect(place).to.have.all.keys('displayName', 'lat', 'lng', 'neighborhood', 'city')",
+                  "  pm.expect(place.lat).to.be.a('number')",
+                  "  pm.expect(place.lng).to.be.a('number')",
+                  "}))",
+                  "if (results.length === 0) console.warn('Nominatim no devolvió sugerencias para esta dirección')",
+                  "pm.collectionVariables.set('searchResults', JSON.stringify(results))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/search?q=Carrera 70 Laureles Medellín"
+          }
+        },
+        {
+          "name": "23 - search el mismo texto con otras mayúsculas/espacios → responde desde caché",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "pm.test('mismas sugerencias que la búsqueda anterior', () => pm.expect(pm.response.json().data.results).to.eql(JSON.parse(pm.collectionVariables.get('searchResults'))))",
+                  "pm.test('rápida porque no va a Nominatim (< 150 ms)', () => pm.expect(pm.response.responseTime).to.be.below(150))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/search?q=  CARRERA 70 LAURELES MEDELLÍN  "
+          }
+        },
+        {
+          "name": "24 - search dirección de Bogotá → 200 sin resultados fuera del área",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const inArea = (p) => p.lat >= 6.05 && p.lat <= 6.5 && p.lng >= -75.75 && p.lng <= -75.3",
+                  "pm.test('ningún resultado fuera del área de servicio', () => pm.response.json().data.results.forEach((place) => pm.expect(inArea(place)).to.eql(true)))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/search?q=Plaza de Bolívar Bogotá"
+          }
+        },
+        {
+          "name": "25 - reverse sin coordenadas → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400))",
+                  "const paths = pm.response.json().error.details.map((detail) => detail.path)",
+                  "pm.test('marca los campos query.lat, query.lng', () => pm.expect(paths).to.include.members([\"query.lat\", \"query.lng\"]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/reverse"
+          }
+        },
+        {
+          "name": "26 - reverse con latitud no numérica → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400))",
+                  "const paths = pm.response.json().error.details.map((detail) => detail.path)",
+                  "pm.test('marca los campos query.lat', () => pm.expect(paths).to.include.members([\"query.lat\"]))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/reverse?lat=abc&lng=-75.5906"
+          }
+        },
+        {
+          "name": "27 - reverse en Bogotá → 422 fuera del área de servicio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422))",
+                  "pm.test('código OUT_OF_SERVICE_AREA', () => pm.expect(pm.response.json().error.code).to.eql('OUT_OF_SERVICE_AREA'))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/reverse?lat=4.711&lng=-74.0721"
+          }
+        },
+        {
+          "name": "28 - reverse pin en Laureles → 200 sugiere el barrio (Nominatim real)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const place = pm.response.json().data.place",
+                  "pm.test('devuelve un lugar con barrio sugerido', () => {",
+                  "  pm.expect(place).to.be.an('object')",
+                  "  pm.expect(place.neighborhood).to.be.a('string').and.not.empty",
+                  "})",
+                  "console.log('Barrio sugerido:', place && place.neighborhood, '| Ciudad:', place && place.city)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/reverse?lat=6.2447&lng=-75.5906"
+          }
+        },
+        {
+          "name": "29 - reverse pin en Provenza → 200 sugiere el barrio (Nominatim real)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "const place = pm.response.json().data.place",
+                  "pm.test('devuelve un barrio sugerido', () => pm.expect(place && place.neighborhood).to.be.a('string'))",
+                  "console.log('Barrio sugerido:', place && place.neighborhood)"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/reverse?lat=6.2087&lng=-75.5664"
+          }
+        },
+        {
+          "name": "30 - reverse del mismo punto → responde desde caché",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200))",
+                  "pm.test('rápida porque no va a Nominatim (< 150 ms)', () => pm.expect(pm.response.responseTime).to.be.below(150))"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{baseUrl}}/geocoding/reverse?lat=6.2087&lng=-75.5664"
+          }
+        }
+      ]
+    }
+  ]
+}

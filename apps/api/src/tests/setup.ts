@@ -9,6 +9,10 @@ process.env.NODE_ENV = 'test'
 process.env.MONGODB_URI = mongoServer.getUri('parche_test')
 process.env.JWT_ACCESS_SECRET = 'test-access-secret-test-access-secret'
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-test-refresh-secret'
+process.env.CLOUDINARY_CLOUD_NAME = 'parche-test'
+process.env.CLOUDINARY_API_KEY = '123456789012345'
+process.env.CLOUDINARY_API_SECRET = 'secreto-de-pruebas'
+process.env.CLOUDINARY_FOLDER = 'parche-test'
 
 await mongoose.connect(process.env.MONGODB_URI)
 

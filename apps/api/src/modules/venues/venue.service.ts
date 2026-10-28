@@ -3,7 +3,12 @@ import { MANAGER_LIMITS, isInServiceArea } from '@parche/shared'
 import { LimitReachedError, NotFoundError, OutOfServiceAreaError } from '../../utils/app-error'
 import { Business } from '../businesses/business.model'
 import { Venue } from './venue.model'
-import type { CreateVenueInput, LocationInput, UpdateVenueInput } from './venue.schemas'
+import type {
+  CreateVenueInput,
+  ListVenuesQuery,
+  LocationInput,
+  UpdateVenueInput,
+} from './venue.schemas'
 
 const VENUE_NOT_FOUND_MESSAGE = 'Lugar no encontrado'
 const VENUE_LIMIT_MESSAGE = `Alcanzaste el máximo de ${MANAGER_LIMITS.maxActiveVenues} lugares activos. Desactiva uno para agregar otro.`
@@ -43,9 +48,11 @@ async function withinActiveVenueLimit(
   }
 }
 
-export async function listMyVenues(ownerId: string) {
+// `active: true` es la lista que se ofrece al crear eventos: los lugares inactivos no aparecen.
+export async function listMyVenues(ownerId: string, { active }: ListVenuesQuery = {}) {
   const businessId = await myBusinessId(ownerId)
-  return Venue.find({ business: businessId }).sort({ isActive: -1, createdAt: -1 })
+  const filter = active === undefined ? {} : { isActive: active }
+  return Venue.find({ business: businessId, ...filter }).sort({ isActive: -1, createdAt: -1 })
 }
 
 // Un id ajeno o mal formado responde 404, sin revelar si el lugar existe.
@@ -97,5 +104,14 @@ export async function updateMyVenue(ownerId: string, venueId: string, input: Upd
     },
     () => Venue.updateOne({ _id: venue._id }, { isActive: false }),
   )
+  return venue
+}
+
+// Idempotente: desactivar un lugar ya inactivo responde igual.
+// TODO RN-24: cuando exista Event, rechazar con 409 si tiene eventos publicados futuros.
+export async function deactivateMyVenue(ownerId: string, venueId: string) {
+  const venue = await findMyVenue(await myBusinessId(ownerId), venueId)
+  venue.isActive = false
+  await venue.save()
   return venue
 }

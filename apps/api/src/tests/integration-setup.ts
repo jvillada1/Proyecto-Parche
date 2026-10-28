@@ -10,6 +10,10 @@ process.env.NODE_ENV = 'test'
 process.env.MONGODB_URI = `${mongoBaseUri}/${databaseName}`
 process.env.JWT_ACCESS_SECRET = 'integration-access-secret-integration-access'
 process.env.JWT_REFRESH_SECRET = 'integration-refresh-secret-integration-refresh'
+process.env.CLOUDINARY_CLOUD_NAME = 'parche-test'
+process.env.CLOUDINARY_API_KEY = '123456789012345'
+process.env.CLOUDINARY_API_SECRET = 'secreto-de-pruebas'
+process.env.CLOUDINARY_FOLDER = 'parche-test'
 
 try {
   await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 3000 })

@@ -312,6 +312,54 @@ describe('PATCH /api/v1/me/business', () => {
   })
 })
 
+describe('PATCH /api/v1/me/business con imágenes de Cloudinary', () => {
+  const ownLogo = {
+    url: 'https://res.cloudinary.com/parche-test/image/upload/v1730000000/parche-test/logo1.png',
+    publicId: 'parche-test/logo1',
+  }
+
+  it('guarda el logo y la portada si son de la cuenta de Cloudinary', async () => {
+    const auth = await registerManager()
+    const coverImage = {
+      url: 'https://res.cloudinary.com/parche-test/image/upload/v1730000001/parche-test/cover1.webp',
+      publicId: 'parche-test/cover1',
+    }
+
+    const response = await patchMyBusiness(auth, { logo: ownLogo, coverImage })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.business).toMatchObject({ logo: ownLogo, coverImage })
+    expect(await Business.findOne()).toMatchObject({ logo: ownLogo, coverImage })
+  })
+
+  it.each([
+    [
+      'de otra cuenta',
+      { ...ownLogo, url: ownLogo.url.replace('/parche-test/image', '/otra/image') },
+    ],
+    ['de otro dominio', { ...ownLogo, url: 'https://imgur.com/logo1.png' }],
+    ['con publicId que no corresponde', { ...ownLogo, publicId: 'parche-test/otra' }],
+  ])('responde 400 con una imagen %s y no guarda nada', async (_case, logo) => {
+    const auth = await registerManager()
+
+    const response = await patchMyBusiness(auth, { logo })
+
+    expect(response.status).toBe(400)
+    expect(detailPaths(response)).toContain('body.logo.url')
+    expect((await Business.findOne())?.logo).toBeUndefined()
+  })
+
+  it('null borra el logo', async () => {
+    const auth = await registerManager()
+    await patchMyBusiness(auth, { logo: ownLogo }).expect(200)
+
+    const response = await patchMyBusiness(auth, { logo: null })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.business).not.toHaveProperty('logo')
+  })
+})
+
 describe('PATCH /api/v1/me/business sobre un negocio aprobado', () => {
   function approveBusiness() {
     return Business.updateOne(

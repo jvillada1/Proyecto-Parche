@@ -51,3 +51,18 @@ export const changePasswordRateLimiter = createRateLimiter({
   countOnlyFailures: true,
   keyParts: (req) => [req.auth?.userId ?? ''],
 })
+
+// Evita que un solo gestor acapare la cola compartida de 1 petición por segundo a Nominatim.
+export const geocodingRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  limit: 30,
+  message: 'Demasiadas búsquedas de direcciones, intenta de nuevo en un minuto',
+  keyParts: (req) => [req.auth?.userId ?? ''],
+})
+
+export const uploadSignatureRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  limit: 30,
+  message: 'Demasiadas subidas de imágenes, intenta de nuevo en un minuto',
+  keyParts: (req) => [req.auth?.userId ?? ''],
+})

@@ -57,3 +57,17 @@ export class LimitReachedError extends AppError {
     super(409, 'LIMIT_REACHED', message)
   }
 }
+
+export class GeocodingUnavailableError extends AppError {
+  constructor(
+    message = 'No pudimos buscar la dirección en este momento. Ubica el pin manualmente en el mapa.',
+  ) {
+    super(502, 'GEOCODING_UNAVAILABLE', message)
+  }
+}
+
+export class UploadsNotConfiguredError extends AppError {
+  constructor(message = 'La subida de imágenes no está disponible en este momento') {
+    super(503, 'UPLOADS_NOT_CONFIGURED', message)
+  }
+}

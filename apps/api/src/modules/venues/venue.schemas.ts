@@ -64,6 +64,14 @@ export const updateVenueSchema = z
     'Envía al menos un campo para actualizar',
   )
 
+export const listVenuesQuerySchema = z.object({
+  active: z
+    .enum(['true', 'false'], 'active debe ser true o false')
+    .transform((value) => value === 'true')
+    .optional(),
+})
+
 export type LocationInput = z.infer<typeof locationSchema>
 export type CreateVenueInput = z.infer<typeof createVenueSchema>
 export type UpdateVenueInput = z.infer<typeof updateVenueSchema>
+export type ListVenuesQuery = z.infer<typeof listVenuesQuerySchema>

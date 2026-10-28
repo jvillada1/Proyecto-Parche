@@ -87,6 +87,10 @@ function patchVenue(auth: string, id: string, body: Record<string, unknown>) {
   return request(baseUrl).patch(`${VENUES}/${id}`).set('Authorization', auth).send(body)
 }
 
+function deactivateVenue(auth: string, id: string) {
+  return request(baseUrl).post(`${VENUES}/${id}/deactivate`).set('Authorization', auth)
+}
+
 function seedVenues(businessId: string, count: number, isActive = true) {
   return Venue.insertMany(
     Array.from({ length: count }, (_, index) => ({
@@ -107,6 +111,7 @@ describe('acceso a /me/venues', () => {
     ['POST', VENUES],
     ['GET', `${VENUES}/${new Types.ObjectId()}`],
     ['PATCH', `${VENUES}/${new Types.ObjectId()}`],
+    ['POST', `${VENUES}/${new Types.ObjectId()}/deactivate`],
   ])('%s %s responde 401 sin token', async (method, path) => {
     const response = await request(baseUrl)[method.toLowerCase() as 'get' | 'post' | 'patch'](path)
 
@@ -443,5 +448,101 @@ describe('PATCH /api/v1/me/venues/:id', () => {
     await patchVenue(auth, id, {}).expect(400)
     await patchVenue(auth, id, { isActive: 'no' }).expect(400)
     await patchVenue(auth, id, { address: 'Cra' }).expect(400)
+  })
+})
+
+describe('POST /api/v1/me/venues/:id/deactivate', () => {
+  it('marca isActive = false y devuelve el lugar', async () => {
+    const { auth } = await registerManager()
+    const created = await createVenue(auth)
+
+    const response = await deactivateVenue(auth, created.body.data.venue.id)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.venue).toMatchObject({ name: 'Sede Laureles', isActive: false })
+    expect(await Venue.findById(created.body.data.venue.id)).toMatchObject({ isActive: false })
+  })
+
+  it('es idempotente: desactivar un lugar ya inactivo responde 200', async () => {
+    const { auth, businessId } = await registerManager()
+    const [inactive] = await seedVenues(businessId, 1, false)
+
+    const response = await deactivateVenue(auth, String(inactive!._id))
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.venue.isActive).toBe(false)
+  })
+
+  it('libera un cupo cuando el límite de lugares activos está alcanzado', async () => {
+    const { auth, businessId } = await registerManager()
+    const [first] = await seedVenues(businessId, MANAGER_LIMITS.maxActiveVenues)
+
+    await deactivateVenue(auth, String(first!._id)).expect(200)
+
+    await createVenue(auth).expect(201)
+  })
+
+  it('responde 403 con rol user', async () => {
+    const auth = await loginAs('user')
+
+    const response = await deactivateVenue(auth, String(new Types.ObjectId()))
+
+    expect(response.status).toBe(403)
+  })
+
+  it('el gestor A recibe 404 al desactivar un lugar del gestor B y no cambia nada', async () => {
+    const { auth } = await registerManager()
+    const managerB = await registerManager('luis@correo.co')
+    const created = await createVenue(managerB.auth, { ...validVenue, name: 'Sede de B' })
+
+    const response = await deactivateVenue(auth, created.body.data.venue.id)
+
+    expect(response.status).toBe(404)
+    expect(response.body.error).toEqual({ code: 'NOT_FOUND', message: 'Lugar no encontrado' })
+    expect(await Venue.findById(created.body.data.venue.id)).toMatchObject({ isActive: true })
+  })
+
+  it('responde 404 con un id mal formado', async () => {
+    const { auth } = await registerManager()
+
+    await deactivateVenue(auth, 'no-es-un-id').expect(404)
+  })
+})
+
+describe('lugares disponibles para crear eventos (GET /me/venues?active=true)', () => {
+  it('los lugares inactivos no se ofrecen', async () => {
+    const { auth } = await registerManager()
+    await createVenue(auth).expect(201)
+    const old = await createVenue(auth, { ...validVenue, name: 'Sede Vieja' })
+    await deactivateVenue(auth, old.body.data.venue.id).expect(200)
+
+    const response = await request(baseUrl).get(`${VENUES}?active=true`).set('Authorization', auth)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.venues.map((venue: { name: string }) => venue.name)).toEqual([
+      'Sede Laureles',
+    ])
+  })
+
+  it('active=false devuelve solo los inactivos y sin filtro devuelve todos', async () => {
+    const { auth, businessId } = await registerManager()
+    await seedVenues(businessId, 2)
+    await seedVenues(businessId, 1, false)
+
+    const inactive = await request(baseUrl).get(`${VENUES}?active=false`).set('Authorization', auth)
+    const all = await request(baseUrl).get(VENUES).set('Authorization', auth)
+
+    expect(inactive.body.data.venues).toHaveLength(1)
+    expect(inactive.body.data.venues[0].isActive).toBe(false)
+    expect(all.body.data.venues).toHaveLength(3)
+  })
+
+  it('responde 400 con un valor de active inválido', async () => {
+    const { auth } = await registerManager()
+
+    const response = await request(baseUrl).get(`${VENUES}?active=si`).set('Authorization', auth)
+
+    expect(response.status).toBe(400)
+    expect(response.body.error.details[0].path).toBe('query.active')
   })
 })

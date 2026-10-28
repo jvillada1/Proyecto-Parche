@@ -1,9 +1,11 @@
 import type { RequestHandler } from 'express'
 import { currentUserId } from '../../utils/current-user'
+import type { ListVenuesQuery } from './venue.schemas'
 import * as venueService from './venue.service'
 
 export const listMyVenues: RequestHandler = async (req, res) => {
-  res.json({ data: { venues: await venueService.listMyVenues(currentUserId(req)) } })
+  const venues = await venueService.listMyVenues(currentUserId(req), req.query as ListVenuesQuery)
+  res.json({ data: { venues } })
 }
 
 export const getMyVenue: RequestHandler<{ id: string }> = async (req, res) => {
@@ -17,5 +19,10 @@ export const createMyVenue: RequestHandler = async (req, res) => {
 
 export const updateMyVenue: RequestHandler<{ id: string }> = async (req, res) => {
   const venue = await venueService.updateMyVenue(currentUserId(req), req.params.id, req.body)
+  res.json({ data: { venue } })
+}
+
+export const deactivateMyVenue: RequestHandler<{ id: string }> = async (req, res) => {
+  const venue = await venueService.deactivateMyVenue(currentUserId(req), req.params.id)
   res.json({ data: { venue } })
 }
