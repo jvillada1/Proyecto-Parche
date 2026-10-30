@@ -71,3 +71,47 @@ export class UploadsNotConfiguredError extends AppError {
     super(503, 'UPLOADS_NOT_CONFIGURED', message)
   }
 }
+
+// RN-09
+export class BusinessNotApprovedError extends AppError {
+  constructor(message = 'Tu negocio debe estar aprobado para publicar eventos') {
+    super(403, 'BUSINESS_NOT_APPROVED', message)
+  }
+}
+
+// RN-16 y RN-17
+export class EventNotEditableError extends AppError {
+  constructor(
+    message = 'El evento ya finalizó, fue cancelado o retirado: es de solo lectura',
+    details?: unknown[],
+  ) {
+    super(422, 'EVENT_NOT_EDITABLE', message, details)
+  }
+}
+
+// RN-18
+export class EventNotCancellableError extends AppError {
+  constructor(message: string) {
+    super(422, 'EVENT_NOT_CANCELLABLE', message)
+  }
+}
+
+// RN-19
+export class EventNotDeletableError extends AppError {
+  constructor(
+    message = 'Solo los borradores se pueden eliminar; un evento publicado se cancela',
+  ) {
+    super(422, 'EVENT_NOT_DELETABLE', message)
+  }
+}
+
+// RN-24
+export class VenueHasUpcomingEventsError extends AppError {
+  constructor(count: number) {
+    super(
+      409,
+      'VENUE_HAS_UPCOMING_EVENTS',
+      `Este lugar tiene ${count} ${count === 1 ? 'evento publicado' : 'eventos publicados'} que aún no ${count === 1 ? 'termina' : 'terminan'}. Cancélalos o muévelos a otro lugar antes de desactivarlo.`,
+    )
+  }
+}

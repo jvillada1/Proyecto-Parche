@@ -1,6 +1,9 @@
 import { ConflictError, NotFoundError } from '../../utils/app-error'
+import { syncBusinessSnapshot } from '../events/event-sync.service'
 import { Business } from './business.model'
 import type { UpdateMyBusinessInput } from './business.schemas'
+
+type BusinessDocument = InstanceType<typeof Business>
 
 const BUSINESS_NOT_FOUND_MESSAGE = 'No tienes un negocio registrado'
 
@@ -42,6 +45,15 @@ function changesVerifiedData(
   )
 }
 
+// RN-26: lo que los eventos copian en businessSnapshot.
+function changesSnapshot(before: BusinessDocument, after: BusinessDocument) {
+  return (
+    before.name !== after.name ||
+    before.slug !== after.slug ||
+    before.logo?.url !== after.logo?.url
+  )
+}
+
 export async function updateMyBusiness(ownerId: string, input: UpdateMyBusinessInput) {
   const update = toUpdate(input)
 
@@ -67,7 +79,10 @@ export async function updateMyBusiness(ownerId: string, input: UpdateMyBusinessI
         : update,
       { returnDocument: 'after', runValidators: true },
     )
-    if (business) return business
+    if (!business) continue
+
+    if (changesSnapshot(current, business)) await syncBusinessSnapshot(business)
+    return business
   }
 
   throw new ConflictError('El negocio cambió mientras lo editabas, intenta de nuevo')

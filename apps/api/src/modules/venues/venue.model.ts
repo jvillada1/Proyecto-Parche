@@ -5,7 +5,7 @@ function isLngLatPair(coordinates: number[]) {
   return coordinates.length === 2 && coordinates.every(Number.isFinite)
 }
 
-const pointSchema = new Schema(
+export const pointSchema = new Schema(
   {
     type: { type: String, enum: ['Point'], default: 'Point', required: true },
     coordinates: {

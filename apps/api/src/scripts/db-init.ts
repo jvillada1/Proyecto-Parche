@@ -4,8 +4,9 @@ import { User } from '../modules/users/user.model'
 import { Business } from '../modules/businesses/business.model'
 import { RefreshToken } from '../modules/auth/refresh-token.model'
 import { Venue } from '../modules/venues/venue.model'
+import { Event } from '../modules/events/event.model'
 
-const models = [User, RefreshToken, Business, Venue]
+const models = [User, RefreshToken, Business, Venue, Event]
 
 await connectDB()
 

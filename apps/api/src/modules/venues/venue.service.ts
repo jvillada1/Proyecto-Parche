@@ -1,7 +1,13 @@
 import { isValidObjectId, type Types } from 'mongoose'
 import { MANAGER_LIMITS, isInServiceArea } from '@parche/shared'
-import { LimitReachedError, NotFoundError, OutOfServiceAreaError } from '../../utils/app-error'
+import {
+  LimitReachedError,
+  NotFoundError,
+  OutOfServiceAreaError,
+  VenueHasUpcomingEventsError,
+} from '../../utils/app-error'
 import { Business } from '../businesses/business.model'
+import { countUpcomingPublishedAt, syncVenueCopies } from '../events/event-sync.service'
 import { Venue } from './venue.model'
 import type {
   CreateVenueInput,
@@ -82,6 +88,15 @@ export async function createMyVenue(ownerId: string, input: CreateVenueInput) {
   return venue
 }
 
+// RN-25: campos que los eventos copian en location y venueSnapshot.
+const COPIED_FIELDS = ['name', 'address', 'neighborhood', 'comuna', 'location'] as const
+
+// RN-24
+async function assertNoUpcomingEvents(venueId: Types.ObjectId) {
+  const count = await countUpcomingPublishedAt(venueId)
+  if (count > 0) throw new VenueHasUpcomingEventsError(count)
+}
+
 export async function updateMyVenue(ownerId: string, venueId: string, input: UpdateVenueInput) {
   const businessId = await myBusinessId(ownerId)
   const venue = await findMyVenue(businessId, venueId)
@@ -92,25 +107,32 @@ export async function updateMyVenue(ownerId: string, venueId: string, input: Upd
   if (referenceNotes !== undefined) venue.set('referenceNotes', referenceNotes ?? undefined)
 
   const reactivating = venue.isModified('isActive') && venue.isActive
-  if (!reactivating) {
+  const deactivating = venue.isModified('isActive') && !venue.isActive
+  const copiesChanged = COPIED_FIELDS.some((field) => venue.isModified(field))
+
+  if (deactivating) await assertNoUpcomingEvents(venue._id)
+
+  if (reactivating) {
+    await withinActiveVenueLimit(
+      businessId,
+      async () => {
+        await venue.save()
+      },
+      () => Venue.updateOne({ _id: venue._id }, { isActive: false }),
+    )
+  } else {
     await venue.save()
-    return venue
   }
 
-  await withinActiveVenueLimit(
-    businessId,
-    async () => {
-      await venue.save()
-    },
-    () => Venue.updateOne({ _id: venue._id }, { isActive: false }),
-  )
+  if (copiesChanged) await syncVenueCopies(venue)
   return venue
 }
 
 // Idempotente: desactivar un lugar ya inactivo responde igual.
-// TODO RN-24: cuando exista Event, rechazar con 409 si tiene eventos publicados futuros.
 export async function deactivateMyVenue(ownerId: string, venueId: string) {
   const venue = await findMyVenue(await myBusinessId(ownerId), venueId)
+  if (!venue.isActive) return venue
+  await assertNoUpcomingEvents(venue._id)
   venue.isActive = false
   await venue.save()
   return venue
